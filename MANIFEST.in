@@ -1,0 +1,1 @@
+recursive-include Tui/etc *.config
