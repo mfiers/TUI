@@ -101,7 +101,7 @@ def scan(app, args):
                 statusline(time.time()-start, COUNTS)
                 laststatus = time.time()
 
-            fullpath = os.path.join(dirpath, f)
+            fullpath = os.path.realpath(os.path.join(dirpath, f))
             stats = os.lstat(fullpath)
             fsize = stats.st_size
             mtime = datetime.utcfromtimestamp(stats.st_mtime)
