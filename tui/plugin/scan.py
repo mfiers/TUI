@@ -102,7 +102,13 @@ def scan(app, args):
                 laststatus = time.time()
 
             fullpath = os.path.realpath(os.path.join(dirpath, f))
-            stats = os.lstat(fullpath)
+            try:
+                stats = os.lstat(fullpath)
+            except FileNotFoundError:
+                #file not found? broken symlink??
+                COUNTS['notfound'] += 1
+                continue
+
             fsize = stats.st_size
             mtime = datetime.utcfromtimestamp(stats.st_mtime)
 
