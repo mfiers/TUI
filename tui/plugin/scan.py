@@ -45,19 +45,27 @@ def get_sha1sum(tuifile):
         COUNTS['fail'] += 1
 
 
-def flush_queue(session):
+def flush_queue(session, inpath):
     global READY
     stored = 0
+    last_tuifile
     try:
-        while True:
-            tuifile = READY.get(False)
-            stored += 1
-            session.add(tuifile)
-    except Empty:
-        pass
-    if stored > 0:
-        session.commit()
-
+        try:
+            while True:
+                tuifile = READY.get(False)
+                stored += 1
+                session.add(tuifile)
+                last_tuifile = tuifile # for the error message
+        except Empty:
+            pass
+        if stored > 0:
+            session.commit()
+    except:
+        # on any error - at least mention any error
+        lg.critical("error storing to db")
+        lg.critical("near file: %s", inpath)
+        lg.critical("near path: %s", last_tuifile.fullpath)
+        raise
 
 def statusline(runtime, cnts):
     print("{:.2f}:q{}".format(runtime, READY.qsize()),
@@ -82,8 +90,10 @@ def scan(app, args):
     pool = Pool(processes=args.threads)
     futures = []
 
+    lastpath = None
     for dirpath, dirs, files in os.walk(curwd):
 
+        lastpath = dirpath
         # print progress
         COUNTS['dir'] += 1
         statusline(time.time()-start, COUNTS)
@@ -102,6 +112,7 @@ def scan(app, args):
                 laststatus = time.time()
 
             fullpath = os.path.realpath(os.path.join(dirpath, f))
+
             try:
                 stats = os.lstat(fullpath)
             except FileNotFoundError:
@@ -137,10 +148,10 @@ def scan(app, args):
             tuifile = TuiFile(fullpath=fullpath, filesize=fsize, mtime=mtime)
             pool.apply_async(get_sha1sum, (tuifile,))
 
-            flush_queue(session)
+            flush_queue(session, lastpath)
 
     pool.close()
     pool.join()
-    flush_queue(session)
+    flush_queue(session, lastpath)
     statusline(time.time()-start, COUNTS)
     print()
